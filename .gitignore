@@ -209,3 +209,5 @@ __marimo__/
 
 # macOS Files (Added by me, was present as .DS* at the end of the input)
 .DS_Store
+
+trainer_output/
