@@ -1,0 +1,2 @@
+checkpoint: "HuggingFaceTB/SmolLM2-135M"
+device: "cpu"
