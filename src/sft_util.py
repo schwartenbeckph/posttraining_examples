@@ -12,7 +12,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from omegaconf import DictConfig, OmegaConf
 
 DEFAULT_CONFIG = {
-    "checkpoint": {"HuggingFaceTB/SmolLM2-135M"},
+    "checkpoint": "HuggingFaceTB/SmolLM2-135M",
     "device": {"cpu": 8},
 }
 
