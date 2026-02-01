@@ -46,10 +46,8 @@ if __name__ == "__main__":
 
     print("Load dataset:")
     dpo_ds = load_dataset("banghua/DL-DPO-Dataset", split="train")
-    # set up the display configures in pandas
-    pd.set_option("display.max_colwidth", None)
-    pd.set_option("display.width", 0)
-    sample_df = dpo_ds.select(range(5)).to_pandas()
+    # dpo_ds = dpo_ds.select(range(100))
+    dpo_ds = dpo_ds.select(range(10))
 
     print("Perform DPO:")
     dpo_trainer = DPOTrainer(

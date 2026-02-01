@@ -11,6 +11,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from omegaconf import DictConfig, OmegaConf
 import re
+from grpo_static import SYSTEM_PROMPT
 
 DEFAULT_CONFIG = {
     "checkpoint": "HuggingFaceTB/SmolLM2-135M",
@@ -31,27 +32,37 @@ def load_config(config_path: str) -> DictConfig:
     config = OmegaConf.merge(OmegaConf.create(DEFAULT_CONFIG), config)
     return config
 
-def generate_responses(model, tokenizer, user_message, system_message=None, max_new_tokens=100):
-    messages = []
-    if system_message:
-        messages.append({"role": "system", "content": system_message})
-    messages.append({"role": "user", "content": user_message})
+def generate_responses(model, tokenizer, user_message=None, system_message=None, max_new_tokens=300, full_message=None):
+    # Format chat using tokenizer's chat template
+    if full_message:
+        messages = full_message
+    else:
+        messages = []
+        if system_message:
+            messages.append({"role": "system", "content": system_message})
+        messages.append({"role": "user", "content": user_message})
+        
     prompt = tokenizer.apply_chat_template(
         messages,
         tokenize=False,
-        add_generation_prompt=False,
-        enable_thinking=False
+        add_generation_prompt=True,
+        enable_thinking=False,
     )
-    inputs=tokenizer(prompt,return_tensors="pt").to(model.device)
-    # outputs = model.generate(inputs)
+
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
     with torch.no_grad():
-        outputs=model.generate(
+        outputs = model.generate(
             **inputs,
             max_new_tokens=max_new_tokens,
             do_sample=False,
             pad_token_id=tokenizer.eos_token_id,
-            eos_token_id=tokenizer.eos_token_id
+            eos_token_id=tokenizer.eos_token_id,
         )
+    input_len = inputs["input_ids"].shape[1]
+    generated_ids = outputs[0][input_len:]
+    response = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
+
+    return response
 
     input_len = inputs["input_ids"].shape[1]
     generated_ids=outputs[0][input_len:]

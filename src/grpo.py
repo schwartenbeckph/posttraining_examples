@@ -25,8 +25,7 @@ grpo_config = GRPOConfig(
     num_generations=4, # Can set as high as 64 or 128
     num_train_epochs=1,
     learning_rate=5e-6,
-    logging_steps=2,
-    no_cuda=True    # keeps the whole run on CPU, incl. MPS
+    logging_steps=2
 )
 
 if __name__ == "__main__":
@@ -39,6 +38,11 @@ if __name__ == "__main__":
 
     print("Load model and tokeniser:")
     model, tokenizer = load_model_and_tokenizer(checkpoint, device)
+    
+    if tokenizer.chat_template is None:
+        print("No chat template found. Setting default...")
+        # Using a standard ChatML-style template as a fallback
+        tokenizer.chat_template = "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
 
     print("Load evaluation dataset")
     data_num = 5
@@ -50,7 +54,7 @@ if __name__ == "__main__":
     all_preds = []
     all_labels = []
 
-    for example in tqdm(eval_dataset):
+    for example in tqdm.tqdm(eval_dataset):
         input_prompt = example["prompt"]
         ground_truth = example["ground_truth"]
         # Run the model to generate an answer
@@ -68,7 +72,6 @@ if __name__ == "__main__":
     # 4. Report accuracy
     accuracy = sum(rewards) / len(rewards)
     print(f"Evaluation Accuracy: {accuracy:.2%}")
-    del model, tokenizer
 
     print("Load dataset:")
     dataset = load_dataset("openai/gsm8k", "main")
@@ -76,11 +79,13 @@ if __name__ == "__main__":
     # Apply to dataset
     train_dataset = train_dataset.map(post_processing)
     train_dataset = train_dataset.remove_columns(["question", "answer"])
-    train_dataset = train_dataset.select(range(10))
+    # train_dataset = train_dataset.select(range(10))
+    train_dataset = train_dataset.select(range(4))
 
     print("Perform GRPO:")
     grpo_trainer = GRPOTrainer(
         model=model,
+        processing_class=tokenizer,  # Add this line
         args=grpo_config,
         reward_funcs=reward_func,
         train_dataset=train_dataset
@@ -93,12 +98,12 @@ if __name__ == "__main__":
     all_preds = []
     all_labels = []
 
-    for example in tqdm(eval_dataset):
+    for example in tqdm.tqdm(eval_dataset):
         input_prompt = example["prompt"]
         ground_truth = example["ground_truth"]
         # Run the model to generate an answer
         with torch.no_grad():
-            response = generate_responses(grpo_trainer, tokenizer,
+            response = generate_responses(grpo_trainer.model, tokenizer,
                                         full_message = input_prompt) 
         all_preds.append([{"role": "assistant", "content": response}])
         all_labels.append(ground_truth)
